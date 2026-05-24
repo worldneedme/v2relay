@@ -14,13 +14,13 @@
 ## 一键安装
 
 ```bash
-bash <(curl -fsSL https://raw.githubusercontent.com/feinhunter/v2relay/main/install.sh)
+bash <(curl -fsSL https://raw.githubusercontent.com/worldneedme/v2relay/main/install.sh)
 ```
 
 如果系统没有 `curl`：
 
 ```bash
-wget -qO- https://raw.githubusercontent.com/feinhunter/v2relay/main/install.sh | bash
+wget -qO- https://raw.githubusercontent.com/worldneedme/v2relay/main/install.sh | bash
 ```
 
 ## 使用

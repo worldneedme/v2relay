@@ -18,7 +18,7 @@ MICROSOCKS_SRC="/usr/local/src/microsocks"
 PANEL_BIN="/usr/local/bin/v2relay"
 CHAIN_NAME="V2RELAY"
 DEFAULT_PORT="8848"
-GITHUB_RAW_URL="https://raw.githubusercontent.com/feinhunter/v2relay/main/install.sh"
+GITHUB_RAW_URL="https://raw.githubusercontent.com/worldneedme/v2relay/main/install.sh"
 
 if [ "$EUID" -ne 0 ]; then
     echo -e "${RED}[错误] 请使用 root 用户权限运行此脚本！${NC}"
