@@ -25,7 +25,7 @@ wget -qO- https://raw.githubusercontent.com/worldneedme/v2relay/main/install.sh 
 /usr/local/bin/v2relay
 ```
 
-普通 VPS 不会安装 Go 环境。如果系统已有 `curl` 或 `wget`，并且已有 `tar/gzip`，安装器也不会执行包管理器安装，适合 256MB 低内存 VPS。
+普通 VPS 不会安装 Go 环境。默认安装会直接下载单文件二进制，不需要 `tar/gzip` 解压。如果系统已有 `curl` 或 `wget`，安装器也不会执行包管理器安装，适合 256MB 低内存 VPS。
 
 安装器会自动识别：
 

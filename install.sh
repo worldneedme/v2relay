@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-VERSION="2026.05.25-go2"
+VERSION="2026.05.25-go3"
 REPO="worldneedme/v2relay"
 INSTALL_BIN="/usr/local/bin/v2relay"
 
@@ -11,11 +11,11 @@ BUILD_FROM_SOURCE=0
 show_update_notes() {
     cat <<'EOF'
 本版更新内容：
-1. 安装器优化为低内存 VPS 友好模式：默认下载 Release 预编译二进制，不安装 Go。
-2. 如果系统已有 curl/wget 和 tar/gzip，安装器不会执行 apt/yum/dnf，减少 256MB VPS 压力。
-3. 新增 dnf、apk 包管理器识别，兼容 Rocky/Alma/Fedora/Alpine 等更多 Linux。
-4. 安装前会显示系统、架构、安装方式和内存提示。
-5. 只有手动指定 --build-from-source 时，才会安装 Go 工具链并从源码编译。
+1. 默认安装改为直接下载单文件二进制，不再需要 tar/gzip 解压，进一步适配 256MB VPS。
+2. 默认安装不安装 Go，不跑源码编译；只有 --build-from-source 才会安装 Go 工具链。
+3. 如果系统已有 curl 或 wget，安装器不会执行 apt/yum/dnf/apk，减少低内存 VPS 压力。
+4. 新增 dnf、apk 包管理器识别，兼容 Rocky/Alma/Fedora/Alpine 等更多 Linux。
+5. 安装前会显示系统、架构、安装方式和内存提示。
 6. 操作完成后会中文提示：立即生效、已持久化、VPS 重启后自动恢复。
 EOF
 }
@@ -65,9 +65,6 @@ need_download_dependencies() {
     if ! command_exists curl && ! command_exists wget; then
         return 0
     fi
-    if ! command_exists tar || ! command_exists gzip; then
-        return 0
-    fi
     return 1
 }
 
@@ -86,17 +83,17 @@ install_packages() {
     elif command_exists apk; then
         apk add --no-cache "$@"
     else
-        echo "[错误] 未识别的系统包管理器，请先手动安装 curl 或 wget，以及 tar/gzip。"
+        echo "[错误] 未识别的系统包管理器，请先手动安装 curl 或 wget。"
         exit 1
     fi
 }
 
 install_download_dependencies() {
     if need_download_dependencies; then
-        echo ">> 检测到下载/解压工具不完整，正在安装基础工具..."
-        install_packages curl wget ca-certificates tar gzip
+        echo ">> 检测到系统缺少 curl/wget，正在安装基础下载工具..."
+        install_packages curl wget ca-certificates
     else
-        echo ">> 下载/解压工具已存在，跳过包管理器安装。"
+        echo ">> 下载工具已存在，跳过包管理器安装。"
     fi
 }
 
@@ -157,13 +154,13 @@ detect_asset_name() {
             ;;
     esac
 
-    echo "v2relay_${VERSION}_${os}_${arch}.tar.gz"
+    echo "v2relay_${VERSION}_${os}_${arch}"
 }
 
 detect_asset_label() {
     local asset
     asset=$(detect_asset_name)
-    echo "${asset#v2relay_${VERSION}_}" | sed 's/\.tar\.gz$//'
+    echo "${asset#v2relay_${VERSION}_}"
 }
 
 install_from_release() {
@@ -176,16 +173,15 @@ install_from_release() {
     asset=$(detect_asset_name)
     url="https://github.com/${REPO}/releases/download/${VERSION}/${asset}"
 
-    echo ">> 下载预编译二进制: $asset"
+    echo ">> 下载预编译单文件二进制: $asset"
     if ! download_file "$url" "$tmp_dir/$asset"; then
         echo "[错误] 未能下载匹配的预编译包。"
         echo "请确认 Release 已上传该架构，或使用 --build-from-source 源码编译。"
         exit 1
     fi
 
-    echo ">> 解压并安装到 $INSTALL_BIN..."
-    tar -xzf "$tmp_dir/$asset" -C "$tmp_dir"
-    install -m 0755 "$tmp_dir/v2relay" "$INSTALL_BIN"
+    echo ">> 安装到 $INSTALL_BIN..."
+    install -m 0755 "$tmp_dir/$asset" "$INSTALL_BIN"
 }
 
 install_from_source() {
