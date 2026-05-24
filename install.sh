@@ -88,7 +88,7 @@ tar -xzf "$TMP_DIR/v2relay.tar.gz" -C "$TMP_DIR"
 cd "$TMP_DIR/v2relay-main"
 
 echo ">> 编译 Go 单文件二进制..."
-go build -trimpath -ldflags "-s -w -X main.Version=$VERSION" -o "$TMP_DIR/v2relay" .
+go build -buildvcs=false -trimpath -ldflags "-s -w -X main.Version=$VERSION" -o "$TMP_DIR/v2relay" .
 
 echo ">> 安装到 $INSTALL_BIN..."
 install -m 0755 "$TMP_DIR/v2relay" "$INSTALL_BIN"
