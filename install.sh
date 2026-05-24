@@ -202,10 +202,10 @@ reset_firewall_rules() {
         cleanup_legacy_port_rules "$old_port"
     fi
 
-    ensure_firewall_chain "$port"
-    iptables -F "$CHAIN_NAME"
-    iptables -A "$CHAIN_NAME" -p tcp -s "$allow_ip" --dport "$port" -j ACCEPT
-    iptables -A "$CHAIN_NAME" -p tcp --dport "$port" -j DROP
+    ensure_firewall_chain "$port" || return 1
+    iptables -F "$CHAIN_NAME" || return 1
+    iptables -A "$CHAIN_NAME" -p tcp -s "$allow_ip" --dport "$port" -j ACCEPT || return 1
+    iptables -A "$CHAIN_NAME" -p tcp --dport "$port" -j DROP || return 1
 }
 
 insert_allow_ip() {
@@ -213,7 +213,7 @@ insert_allow_ip() {
     local allow_ip="$2"
     local drop_line
 
-    ensure_firewall_chain "$port"
+    ensure_firewall_chain "$port" || return 1
 
     if iptables -C "$CHAIN_NAME" -p tcp -s "$allow_ip" --dport "$port" -j ACCEPT 2>/dev/null; then
         echo -e "${YELLOW}[提示] IP 已存在，无需重复添加: $allow_ip${NC}"
@@ -337,20 +337,23 @@ ProtectSystem=full
 WantedBy=multi-user.target
 SYSTEMD_EOF
 
+    echo -e "${YELLOW}>> 配置 iptables 专用链，只接管 TCP $PORT...${NC}"
+    reset_firewall_rules "$PORT" "$ALLOW_IP" "$OLD_PORT" || {
+        echo -e "${RED}[错误] 防火墙规则配置失败，未启动 microsocks。${NC}"
+        sleep 2
+        return
+    }
+    save_iptables
+    save_config "$PORT"
+
     systemctl daemon-reload
     systemctl enable microsocks >/dev/null 2>&1
     systemctl restart microsocks
-
     if ! systemctl is-active --quiet microsocks; then
         echo -e "${RED}[错误] microsocks 启动失败，请执行 journalctl -u microsocks -n 50 查看原因。${NC}"
         sleep 3
         return
     fi
-
-    echo -e "${YELLOW}>> 配置 iptables 专用链，只接管 TCP $PORT...${NC}"
-    reset_firewall_rules "$PORT" "$ALLOW_IP" "$OLD_PORT"
-    save_iptables
-    save_config "$PORT"
 
     if install_panel_shortcut; then
         echo -e "${GREEN}[成功] 快捷命令已安装：直接输入 v2relay 即可打开面板。${NC}"
@@ -380,7 +383,11 @@ add_ip() {
         return
     fi
 
-    insert_allow_ip "$PORT" "$NEW_IP"
+    insert_allow_ip "$PORT" "$NEW_IP" || {
+        echo -e "${RED}[错误] 防火墙规则写入失败。${NC}"
+        sleep 2
+        return
+    }
     save_iptables
     echo -e "${GREEN}[成功] 已放行 IP: $NEW_IP${NC}"
     pause_menu
