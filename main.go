@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-var Version = "2026.05.25-go1"
+var Version = "2026.05.25-go2"
 
 const (
 	configFile              = "/etc/v2relay_node.conf"

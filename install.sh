@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-VERSION="2026.05.25-go1"
+VERSION="2026.05.25-go2"
 REPO="worldneedme/v2relay"
 INSTALL_BIN="/usr/local/bin/v2relay"
 
