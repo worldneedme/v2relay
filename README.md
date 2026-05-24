@@ -25,7 +25,15 @@ wget -qO- https://raw.githubusercontent.com/worldneedme/v2relay/main/install.sh 
 /usr/local/bin/v2relay
 ```
 
-普通 VPS 不会安装 Go 环境。只有手动指定源码编译时才会安装 Go：
+普通 VPS 不会安装 Go 环境。如果系统已有 `curl` 或 `wget`，并且已有 `tar/gzip`，安装器也不会执行包管理器安装，适合 256MB 低内存 VPS。
+
+安装器会自动识别：
+
+- 包管理器：`apt-get` / `dnf` / `yum` / `apk`
+- 架构：`linux_amd64` / `linux_arm64` / `linux_armv7`
+- 系统和内存，并在安装前显示检测结果
+
+只有手动指定源码编译时才会安装 Go：
 
 ```bash
 bash <(curl -fsSL https://raw.githubusercontent.com/worldneedme/v2relay/main/install.sh) --build-from-source
@@ -76,4 +84,4 @@ v2relay
 
 菜单选择 `4`。
 
-更新前会显示远程中文更新说明，确认后才会下载、重新编译并安装新版。
+更新前会显示远程中文更新说明，确认后才会下载并安装新版预编译二进制。

@@ -11,11 +11,11 @@ BUILD_FROM_SOURCE=0
 show_update_notes() {
     cat <<'EOF'
 本版更新内容：
-1. 安装器改为默认下载 GitHub Release 预编译二进制，用户 VPS 不再需要安装 Go 环境。
-2. 只有手动指定 --build-from-source 时，才会安装 Go 工具链并从源码编译。
-3. 核心面板保持 Go 单文件二进制，长期维护更清晰，运行时依赖更少。
-4. 主菜单包含转发代理、跳跃端口、全局规则总览、更新脚本。
-5. 跳跃端口规则写入 /etc/v2relay_dport.rules，并通过 v2relay-dport.service 开机加载。
+1. 安装器优化为低内存 VPS 友好模式：默认下载 Release 预编译二进制，不安装 Go。
+2. 如果系统已有 curl/wget 和 tar/gzip，安装器不会执行 apt/yum/dnf，减少 256MB VPS 压力。
+3. 新增 dnf、apk 包管理器识别，兼容 Rocky/Alma/Fedora/Alpine 等更多 Linux。
+4. 安装前会显示系统、架构、安装方式和内存提示。
+5. 只有手动指定 --build-from-source 时，才会安装 Go 工具链并从源码编译。
 6. 操作完成后会中文提示：立即生效、已持久化、VPS 重启后自动恢复。
 EOF
 }
@@ -48,28 +48,72 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
-install_download_dependencies() {
+detect_os_name() {
+    if [ -r /etc/os-release ]; then
+        . /etc/os-release
+        echo "${PRETTY_NAME:-${NAME:-Linux}}"
+    else
+        uname -s
+    fi
+}
+
+detect_mem_mb() {
+    awk '/MemTotal/ {printf "%d", $2/1024}' /proc/meminfo 2>/dev/null || echo "未知"
+}
+
+need_download_dependencies() {
+    if ! command_exists curl && ! command_exists wget; then
+        return 0
+    fi
+    if ! command_exists tar || ! command_exists gzip; then
+        return 0
+    fi
+    return 1
+}
+
+install_packages() {
+    if [ "$#" -eq 0 ]; then
+        return
+    fi
+
     if command_exists apt-get; then
         apt-get update -y
-        DEBIAN_FRONTEND=noninteractive apt-get install -yq \
-            curl wget ca-certificates tar gzip
+        DEBIAN_FRONTEND=noninteractive apt-get install -yq "$@"
+    elif command_exists dnf; then
+        dnf install -y "$@"
     elif command_exists yum; then
-        yum install -y curl wget ca-certificates tar gzip
+        yum install -y "$@"
+    elif command_exists apk; then
+        apk add --no-cache "$@"
     else
-        echo "[错误] 未识别的系统包管理器，仅支持 apt-get / yum。"
+        echo "[错误] 未识别的系统包管理器，请先手动安装 curl 或 wget，以及 tar/gzip。"
         exit 1
     fi
 }
 
+install_download_dependencies() {
+    if need_download_dependencies; then
+        echo ">> 检测到下载/解压工具不完整，正在安装基础工具..."
+        install_packages curl wget ca-certificates tar gzip
+    else
+        echo ">> 下载/解压工具已存在，跳过包管理器安装。"
+    fi
+}
+
 install_build_dependencies() {
+    echo ">> 源码编译模式需要 Go 工具链，低内存 VPS 不建议使用。"
     if command_exists apt-get; then
         apt-get update -y
         DEBIAN_FRONTEND=noninteractive apt-get install -yq \
             golang-go curl wget ca-certificates tar gzip
+    elif command_exists dnf; then
+        dnf install -y golang curl wget ca-certificates tar gzip
     elif command_exists yum; then
         yum install -y golang curl wget ca-certificates tar gzip
+    elif command_exists apk; then
+        apk add --no-cache go curl wget ca-certificates tar gzip build-base
     else
-        echo "[错误] 未识别的系统包管理器，仅支持 apt-get / yum。"
+        echo "[错误] 未识别的系统包管理器，无法自动安装 Go。"
         exit 1
     fi
 }
@@ -114,6 +158,12 @@ detect_asset_name() {
     esac
 
     echo "v2relay_${VERSION}_${os}_${arch}.tar.gz"
+}
+
+detect_asset_label() {
+    local asset
+    asset=$(detect_asset_name)
+    echo "${asset#v2relay_${VERSION}_}" | sed 's/\.tar\.gz$//'
 }
 
 install_from_release() {
@@ -162,11 +212,15 @@ install_from_source() {
 
 echo "=== v2relay Go 版安装器 ==="
 echo "目标版本: $VERSION"
+echo "检测系统: $(detect_os_name)"
+echo "检测架构: $(detect_asset_label)"
+echo "检测内存: $(detect_mem_mb) MB"
 
 if [ "$BUILD_FROM_SOURCE" -eq 1 ]; then
+    echo "安装方式: 源码编译，会安装 Go 环境"
     install_from_source
 else
-    echo ">> 默认使用预编译二进制安装，不会安装 Go 环境。"
+    echo "安装方式: Release 预编译二进制，不安装 Go 环境"
     install_from_release
 fi
 
