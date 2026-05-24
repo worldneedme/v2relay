@@ -19,10 +19,16 @@ bash <(curl -fsSL https://raw.githubusercontent.com/worldneedme/v2relay/main/ins
 wget -qO- https://raw.githubusercontent.com/worldneedme/v2relay/main/install.sh | bash
 ```
 
-安装器会安装 Go 工具链，编译单文件二进制，并安装到：
+安装器默认下载 GitHub Release 预编译二进制，并安装到：
 
 ```text
 /usr/local/bin/v2relay
+```
+
+普通 VPS 不会安装 Go 环境。只有手动指定源码编译时才会安装 Go：
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/worldneedme/v2relay/main/install.sh) --build-from-source
 ```
 
 以后直接输入：
